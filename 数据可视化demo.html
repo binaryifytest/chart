@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <style>
+        main {
+            position: relative;
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            display: block;
+        }
+
+        .content {
+            width: 100%;
+            height: 100%;
+            margin-top: 1%;
+        }
+
+        .center_bot {
+            width: 100%;
+            height: 100%;
+            margin: auto;
+            margin-top: 0.5%
+        }
+
+        .center_bot>div {
+            width: 100%;
+            height: 100%;
+        }
+
+        .lists {
+            display: flex;
+            width: 400px;
+            margin: auto
+        }
+
+        .lists .list .t1 {
+            width: 20px;
+            height: 10px;
+            margin: 0 auto;
+            border-radius: 5px;
+        }
+
+        .lists .list .o1 {
+            background-color: OrangeRed;
+        }
+
+        .lists .list .o2 {
+            background-color: DeepSkyBlue;
+        }
+
+        .lists .list .o3 {
+            background-color: LimeGreen;
+        }
+
+        .lists .list .o4 {
+            background-color: Orange;
+        }
+
+        .lists .list .o5 {
+            background-color: DarkGray;
+        }
+
+        .lists .list {
+            flex: 1;
+        }
+
+        .lists .list p,
+        .tooltip p {
+            margin: 0;
+            padding: 0;
+            font-size: 12px;
+            text-align: center;
+        }
+
+        .tooltip p {
+            text-align: left;
+        }
+
+        .tooltip p.tooltip_title {
+            font-weight: bold;
+            text-align: center;
+        }
+    </style>
+    <main>
+        <div class="content">
+            <div class="lists">
+                <div class="list">
+                    <div class="t1 o1">
+                    </div>
+                    <p>報警模式</p>
+                </div>
+                <div class="list">
+                    <div class="t1 o2">
+                    </div>
+                    <p>自動運行</p>
+                </div>
+                <div class="list">
+                    <div class="t1 o3">
+                    </div>
+                    <p>手動運行</p>
+                </div>
+                <div class="list">
+                    <div class="t1 o4">
+                    </div>
+                    <p>手動模式</p>
+                </div>
+                <div class="list">
+                    <div class="t1 o5">
+                    </div>
+                    <p>關機</p>
+                </div>
+            </div>
+            <div class="center_bot">
+                <div id="Equipment_status"></div>
+            </div>
+        </div>
+    </main>
+    <script src="./js/echarts.min.js"></script>
+    <script>
+        var bardata = [];
+        var pieDataT = [];
+        var all = 0;
+        var labelList = [];
+        var MaxInterval = 0;
+        var Interval = 0;
+
+        self.onInit = function () {
+            labelList = rankLabels();
+            var axisColor = self.ctx.widgetConfig.color;
+            var newid = guid();
+            document.getElementById('Equipment_status').setAttribute('id', newid);
+            var pieData = {
+                labels: [],
+                datasets: [],
+                color: []
+            };
+
+            var dataset = {
+                name: "",
+                value: 0
+            }
+
+            //加載坐標y軸的標籤
+            for (var i = 0; i < self.ctx.data
+                .length; i++) {
+                var labelIndex = labelList[i].index;
+                var dataKey = self.ctx.data[labelIndex].dataKey;
+                self.ctx.data[i].data = 50;
+                pieData.labels.push(dataKey.label);
+                pieData.color.push(dataKey.color);
+                dataset = {
+                    name: dataKey.label,
+                    value: self.ctx.data[labelIndex].data
+                }
+                pieData.datasets.push(dataset);
+            }
+
+            var data = [];
+            var startTime = self.ctx.timeWindow
+                .minTime;
+            var nowtime = (new Date()).getTime();
+
+            var categories = pieData.labels;
+
+            data = bardata;
+
+            function renderItem(params, api) {
+                var categoryIndex = api.value(0);
+                var start = api.coord([api.value(1),
+                    categoryIndex
+                ]);
+                var end = api.coord([api.value(2),
+                    categoryIndex
+                ]);
+                var height = api.size([0, 1])[1] *
+                    0.6;
+                height = 18;
+                return {
+                    type: 'rect',
+                    shape: echarts.graphic
+                        .clipRectByRect({
+                            x: start[0],
+                            y: start[1] -
+                                height / 2,
+                            width: end[0] -
+                                start[0],
+                            height: height
+                        }, {
+                            x: params.coordSys
+                                .x,
+                            y: params.coordSys
+                                .y,
+                            width: params
+                                .coordSys.width,
+                            height: params
+                                .coordSys.height
+                        }),
+                    style: api.style()
+                };
+            }
+
+            option = {
+                tooltip: {
+                    confine: true,
+                    backgroundColor: 'rgba(0,0,0,0.51)',
+                    textStyle: {
+                        color: axisColor
+                    },
+                    formatter: function (params) {
+                        var str =
+                            `<div class="tooltip">
+      <p class="tooltip_title">${pieDataT[params.value[0]][5].value} </p>
+      <p>報警模式：${(pieDataT[params.value[0]][0].value * 100 / all).toFixed(2)}%</p>
+      <p>自動運行：${(pieDataT[params.value[0]][1].value * 100 / all).toFixed(2)}%</p>
+    <p>手動運行：${(pieDataT[params.value[0]][2].value * 100 / all)
+                                .toFixed(2)} % </p>
+    <p>手動模式：${(pieDataT[params.value[0]][3].value * 100 / all).toFixed(2)} % </p>
+    <p>關機：${(pieDataT[params.value[0]][4].value * 100 / all).toFixed(2)}% </p>
+    </div>`;
+                        return str;
+                    }
+                },
+
+                grid: {
+                    top: 10, // 默认60
+                    right: 20, // 默认10%
+                    left: 80,
+                    bottom: 68, // 默认60
+
+                },
+                dataZoom: [{
+                    type: 'slider',
+                    yAxisIndex: 0,
+                    width: 10,
+                    right: 10,
+                    top: 0,
+                    bottom: '24%',
+                    startValue: 0,
+                    endValue: 5,
+                    handleSize: 0,
+                    showDetail: false,
+
+                },
+                {
+                    type: 'inside',
+                    yAxisIndex: 0,
+                    zoomOnMouseWheel: false, //滚轮是否触发缩放
+                    moveOnMouseMove: true, //鼠标滚轮触发滚动
+                    moveOnMouseWheel: true
+                }
+                ],
+                xAxis: {
+                    type: 'time',
+                    min: startTime,
+                    max: nowtime,
+                    scale: true,
+                    axisLabel: {
+                        color: axisColor,
+                        fontSize: 12,
+                    }, axisLine: {
+                        lineStyle: {
+                            color: axisColor,
+                        }
+                    }
+                },
+                yAxis: {
+                    // min: 50,
+                    data: categories,
+                    axisLabel: {
+                        color: axisColor,
+                        fontSize: 12,
+                    }, axisLine: {
+                        lineStyle: {
+                            color: axisColor,
+                        }
+                    }
+                },
+                series: [{
+                    type: 'custom',
+                    renderItem: renderItem,
+                    itemStyle: {
+                        normal: {
+                            opacity: 0.8
+                        }
+                    },
+                    encode: {
+                        x: [1, 2, 3],
+                        y: 0,
+                    },
+                    data: data
+                }
+                    // , {
+                    //     type: 'pie',
+                    //     data: [],
+                    //     radius: '40%',
+                    //     center: ['80%',
+                    //         '20%'
+                    //     ]
+                    // }
+                ]
+            };
+
+            self.ctx.chart1 = echarts.init(document
+                .getElementById(newid));
+            self.ctx.chart1.setOption(option);
+
+            //   })
+            self.onResize();
+        }
+        self.onDataUpdated = function () {
+            debugger
+            if ((self.ctx.timeWindow.maxTime -
+                self.ctx.timeWindow.minTime != MaxInterval) ||
+                self.ctx.timeWindow.interval != Interval ||
+                all == 0) {
+                MaxInterval = self.ctx.timeWindow.maxTime -
+                    self.ctx.timeWindow.minTime;
+                Interval = self.ctx.timeWindow.interval;
+                all = MaxInterval / Interval + 1;
+            }
+
+            bardata.length = 0;
+            pieDataT.length = 0;
+            var ShrinkFontSize = {
+                flag: false,
+                size: 12
+            };
+            //加載x狀態序列
+            for (var i = 0; i < self.ctx.data.length; i++) {
+                var tmpPiedata = [];
+
+                var DataIndex = labelList[i].index;  //調整數據讀取順序
+                var cellData = self.ctx.data[DataIndex];
+
+                if (cellData.data.length >= 0) {
+                    var tmp0 = 0,
+                        tmp1 = 0,
+                        tmp2 = 0,
+                        tmp3 = 0,
+                        tmp4 = 0;
+                    for (var j = 0; j < cellData.data
+                        .length; j++) {
+                        var tvPair = cellData.data[j];
+                        var key = tvPair[0];
+                        var value = tvPair[1];
+
+                        if (value === 0) {
+                            tmp0++;
+                            bardata.push({
+                                name: '報警模式',
+                                value: [
+                                    i,
+                                    key,
+                                    key + self.ctx
+                                        .timeWindow
+                                        .interval,
+                                    self.ctx
+                                        .timeWindow
+                                        .interval
+                                ],
+                                itemStyle: {
+                                    normal: {
+                                        color: 'OrangeRed'
+                                    }
+                                },
+
+                            });
+
+
+                        } else if (value == 1) {
+                            tmp1++;
+                            bardata.push({
+                                name: '自動運行',
+                                value: [
+                                    i,
+                                    key,
+                                    key + self.ctx
+                                        .timeWindow
+                                        .interval,
+                                    self.ctx
+                                        .timeWindow
+                                        .interval
+                                ],
+                                itemStyle: {
+                                    normal: {
+                                        color: 'DeepSkyBlue'
+                                    }
+                                },
+
+                            });
+                        } else if (value == 2) {
+                            tmp2++;
+                            bardata.push({
+                                name: '手動運行',
+                                value: [
+                                    i,
+                                    key,
+                                    key + self.ctx
+                                        .timeWindow
+                                        .interval,
+                                    self.ctx
+                                        .timeWindow
+                                        .interval
+                                ],
+                                itemStyle: {
+                                    normal: {
+                                        color: 'LimeGreen'
+                                    }
+                                },
+
+                            });
+                        } else if (value == 3) {
+                            tmp3++;
+                            bardata.push({
+                                name: '手動模式',
+                                value: [
+                                    i,
+                                    key,
+                                    key + self.ctx
+                                        .timeWindow
+                                        .interval,
+                                    self.ctx
+                                        .timeWindow
+                                        .interval
+                                ],
+                                itemStyle: {
+                                    normal: {
+                                        color: 'Orange'
+                                    }
+                                },
+
+                            });
+
+                        } else if (value == 4) {
+                            tmp4++;
+                            bardata.push({
+                                name: '關機',
+                                value: [
+                                    i,
+                                    key,
+                                    key + self.ctx
+                                        .timeWindow
+                                        .interval,
+                                    self.ctx
+                                        .timeWindow
+                                        .interval
+                                ],
+                                itemStyle: {
+                                    normal: {
+                                        color: 'DarkGray'
+                                    }
+                                },
+
+                            });
+                        }
+                    }
+                    tmpPiedata.push(
+                        {
+                            name: '報警模式',
+                            value: tmp0
+                        }, {
+                        name: '自動運行',
+                        value: tmp1
+                    }, {
+                        name: '手動運行',
+                        value: tmp2
+                    }, {
+                        name: '手動模式',
+                        value: tmp3
+                    }, {
+                        name: '關機',
+                        value: tmp4
+                    }, {
+                        name: '设备名',
+                        value: labelList[i].fullName
+                    });
+
+                    pieDataT.push(tmpPiedata);
+                }
+
+                if (ShrinkFontSize.flag == false && cellData.dataKey.label.length > 10)    //是否縮小Y軸標籤字體大小
+                {
+                    ShrinkFontSize.size = 11 - (cellData.dataKey.label.length - 10) / 2;
+                    ShrinkFontSize.flag = true;
+                }
+
+            }
+
+            var option = self.ctx.chart1.getOption();
+            option.xAxis[0].min = self.ctx.timeWindow
+                .minTime;
+            option.series[0].data = bardata;
+            option.xAxis[0].axisLabel.fontSize = ShrinkFontSize.size;
+            option.yAxis[0].axisLabel.fontSize = ShrinkFontSize.size;
+            //  option.series[1].data = pieData;
+            self.ctx.chart1.setOption(option, true);
+
+
+        }
+        self.onResize = function () {
+
+            if (self.ctx.height >= 70) {
+                if (self.ctx.chart1) {
+                    self.ctx.chart1.resize();
+                }
+            }
+        }
+        self.onDestroy = function () { }
+        function rankLabels() {
+            let entityLabel = [];
+            let labelList = [];
+            for (var i = 0; i < self.ctx.datasources.length; i++) {
+                for (var j = 0; j < self.ctx.datasources[i].dataKeys.length; j++) {
+                    entityLabel.push(self.ctx.datasources[i].dataKeys[j].label);
+                }
+            }
+            /*for (var i = 0; i < entityLabel.length; i++) {
+              LabelObject = new Object();
+              LabelObject.fullName = entityLabel[i];
+              LabelObject.firstName = entityLabel[i].split(/[-———_]/)[0];
+              LabelObject.lastName = entityLabel[i].split(/[-———_]/)[1];
+              LabelObject.index = i;
+              labelList.push(LabelObject);
+            }*/
+
+            for (var i = 0; i < entityLabel.length; i++) {
+                for (var j = entityLabel[i].length; j > 0; j--) {
+                    if (isNaN(parseInt(entityLabel[i].substr(j - 1, 1)))) {
+                        LabelObject = new Object();
+                        LabelObject.fullName = entityLabel[i];
+                        LabelObject.firstName = entityLabel[i].slice(0, j);
+                        LabelObject.lastName = entityLabel[i].substr(j);
+                        LabelObject.index = i;
+                        labelList.push(LabelObject);
+                        break;
+                    }
+
+                }
+
+            }
+            labelList.sort(function (a, b) {
+                return ('' + a.fullName).localeCompare(b.fullName);
+            })
+            /*  for (j = 0; j < labelList.length - 1; j++)
+              {
+                  for (i = 0; i < labelList.length - 1 - j; i++)
+                  {
+                      if (parseInt(labelList[i].lastName)  < parseInt(labelList[i+1].lastName)
+                          && labelList[i].firstName===labelList[i+1].firstName)
+                      {
+                          temp = labelList[i];
+                          labelList[i] = labelList[i + 1];
+                          labelList[i + 1] = temp;
+                      }
+                  }
+              }*/
+            return labelList;
+        }
+        function guid() {
+            return Number(Math.random().toString().substr(3, 3) + Date.now()).toString(36);
+        }
+    </script>
+</body>
+
+</html>

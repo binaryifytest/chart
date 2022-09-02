@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <style>
+      .table_all {
+        width: 100%;
+        height: 100%;
+        font-size: 1rem;
+        position: relative;
+      }
+      /*表头题注caption*/
+      .table_all .caption {
+        width: 100%;
+        height: 2.5rem;
+        display: flex;
+        justify-content: space-between;
+      }
+      .table_all .caption .caption_title {
+      }
+      .table_all .caption .caption_title > span {
+        display: block;
+        padding-left: 0.5rem;
+        border-left: 0.25rem solid #19ebff;
+        font-size: 1.125rem;
+        color: #19ebff;
+      }
+      .table_all .caption .echarts_note {
+        padding-right: 1rem;
+      }
+      .lists {
+        display: flex;
+        width: 20rem;
+        margin: auto;
+      }
+      .lists .list .t1 {
+        width: 1.1rem;
+        height: 0.6rem;
+        margin: 1px auto;
+        border-radius: 0.3rem;
+      }
+      .lists .list .o1 {
+        background-color: OrangeRed;
+      }
+      .lists .list .o2 {
+        background-color: LimeGreen;
+      }
+      .lists .list .o3 {
+        background-color: Orange;
+      }
+      .lists .list .o4 {
+        background-color: Crimson;
+      }
+      .lists .list .o5 {
+        background-color: DarkGray;
+      }
+      .lists .list {
+        flex: 1;
+      }
+      .lists .list p,
+      .tooltip p {
+        margin: 0;
+        padding: 0;
+        font-size: 0.7rem;
+        text-align: center;
+        line-height: 1.125rem;
+      }
+      .tooltip p {
+        text-align: left;
+      }
+      /* 表头标题 */
+      .table_all div.sub_title {
+        width: 100%;
+        height: 2.8rem;
+        text-align: center;
+        display: flex;
+        font-weight: bold;
+        /*background-color: rgb(10,52,77,0.87);*/
+        background-color: #00868f;
+      }
+      .table_all .t_item {
+        display: inline-block;
+        margin: auto;
+        width: 7.5%;
+      }
+      .table_all .timer_item,
+      .table_all .account_item {
+        width: 5%;
+        display: inline-block;
+        margin: auto;
+      }
+      .table_all .echart_nav {
+        display: inline-block;
+        margin: auto;
+        width: 10%;
+      }
+      .table_all .echart_nav .subtext {
+        display: block;
+        font-size: 0.8rem;
+      }
+      /* 数据源内容*/
+      #echart_content {
+        width: 100%;
+        overflow-y: auto;
+        position: absolute;
+        top: 5.3rem;
+        left: 0;
+        right: 0;
+        bottom: 0;
+      }
+      /* 滚动条样式设置*/
+      #echart_content::-webkit-scrollbar {
+        width: 0px;
+        /*height:10px;*/
+      }
+      .table_all div.sub_content {
+        width: 100%;
+        height: 50%;
+        text-align: center;
+        display: flex;
+        border-bottom: 1px solid #119eaa;
+      }
+      /* custom */
+      .table_all div.sub_content .timer_bar {
+        width: 35%;
+        height: 100%;
+      }
+      /* gauge */
+      .table_all div.sub_content .echarts_item {
+        width: 10%;
+        height: 100%;
+      }
+    </style>
+    <div class="table_all">
+      <div class="caption">
+        <div class="caption_title"><span>設備狀態表</span></div>
+        <div class="echarts_note">
+          <div class="lists">
+            <div class="list">
+              <div class="t1 o2"></div>
+              <p>生產</p>
+            </div>
+            <div class="list">
+              <div class="t1 o1"></div>
+              <p>報警</p>
+            </div>
+            <div class="list">
+              <div class="t1 o3"></div>
+              <p>待機</p>
+            </div>
+            <div class="list">
+              <div class="t1 o4"></div>
+              <p>故障</p>
+            </div>
+            <div class="list">
+              <div class="t1 o5"></div>
+              <p>離線</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="sub_title">
+        <span class="t_item">機臺編號</span>
+        <span class="t_item">牌號規格</span>
+        <span class="t_item">狀態 </span>
+        <span class="timer_item">05:11</span>
+        <span class="timer_item">11:29</span>
+        <span class="timer_item">13:14</span>
+        <span class="timer_item">16:40</span>
+        <span class="timer_item">17:11</span>
+        <span class="timer_item">20:23</span>
+        <span class="timer_item">23:29</span>
+        <span class="echart_nav"
+          >稼動率<span class="subtext">（料管加熱）</span></span
+        >
+        <span class="echart_nav"
+          >有效稼動率<span class="subtext">（綠燈生產）</span></span
+        >
+        <span class="echart_nav"
+          >生產效率<span class="subtext">（綠燈/料管加熱）</span></span
+        >
+        <span class="account_item">報警次數</span>
+        <span class="t_item">报警时间</span>
+      </div>
+      <div id="echart_content"></div>
+    </div>
+    <script src="/js/echarts.min.js"></script>
+    <script src="./js/jquery-3.1.1.min.js"></script>
+    <script>
+      var my_echarts = {}; //收集echarts然后遍历并resize()
+      var StatusContent = {
+        //狀態的内容和颜色
+        0: ["報警 ◉ ", "OrangeRed"], //status-0
+        1: ["生產 ◉ ", "LimeGreen"], //Status-1
+        2: ["故障 ◉ ", "Crimson"], //status-3&&不加热
+        3: ["待機 ◉ ", "Orange"], //status-3&&加热
+        4: ["離綫 ◉ ", "DarkGray"], //无数据
+      };
+      var testStatus = {}; //测试所用，可删除
+      // gauge_echarts数据的颜色区分
+      var rateColor = ["DeepSkyBlue", "Orange", "OrangeRed"];
+      var bardata = [];
+      var MaxInterval = 0;
+      var Interval = 0;
+
+      self.onInit = function () {
+        // var length = self.ctx.datasources.length;
+        var entityLabel = []; //收集设备名称
+        // for (var i = 0; i < length; i++) {
+        entityLabel.push(self.ctx.datasources[0].entityName);
+        // }
+        // 架子
+        $("#echart_content").empty();
+        var temp = `<div class="sub_content">
+        <div class="t_item"></div>
+        <div class="t_item"></div>
+        <div class="t_item"></div>
+        <div class="timer_bar"><div id="custom0"></div></div>
+        <div class="echarts_item"><div id="jiadong0_0"></div></div>
+        <div class="echarts_item"><div id="jiadong0_1"></div></div>
+        <div class="echarts_item"><div id="jiadong0_2"></div></div>
+        <div class="account_item"></div>
+        <div class="t_item"></div>
+        </div>`;
+        $("#echart_content").append(temp);
+
+        // 初始化echarts
+        my_echarts = {};
+
+        $("#custom0").css({
+          width: "100%",
+          height: "100%",
+        });
+        $("#jiadong0_0").css({
+          width: "100%",
+          height: "100%",
+        });
+        $("#jiadong0_1").css({
+          width: "100%",
+          height: "100%",
+        });
+        $("#jiadong0_2").css({
+          width: "100%",
+          height: "100%",
+        });
+        setCustomEcharts("custom0", entityLabel[0]);
+        setGaugeEchart("jiadong0_0");
+        setGaugeEchart("jiadong0_1");
+        setGaugeEchart("jiadong0_2");
+        self.onResize();
+      };
+
+      self.onDataUpdated = function () {
+        // 填写数据
+        if (
+          self.ctx.timeWindow.maxTime - self.ctx.timeWindow.minTime !=
+            MaxInterval ||
+          self.ctx.timeWindow.interval != Interval
+        ) {
+          MaxInterval =
+            self.ctx.timeWindow.maxTime - self.ctx.timeWindow.minTime;
+          Interval = self.ctx.timeWindow.interval;
+        }
+
+        testStatus = {};
+        var datasources = self.ctx.datasources;
+        let i = 0;
+        // for (let i = 0; i < datasources.length; i++) {
+        var cells = $("#echart_content .sub_content:eq(" + i + ")>div");
+        var entityName = datasources[i].entityName;
+        cells.eq(0).text(entityName); //編號
+        try {
+          var deviceType = datasources[i].entity.label;
+
+          cells.eq(1).text(deviceType); //牌號
+        } catch {}
+
+        var devStatus = GetDevstatus(entityName);
+        cells.eq(2).text(devStatus.data); //幾臺狀態
+        cells.eq(2).css("color", devStatus.color);
+
+        var Eff = devStatus.eff;
+        let node1 = Eff[0]; //稼動率
+        let node2 = Eff[1]; //有效稼動率
+        let node3 = Eff[2]; //生產效率
+        node1.value = [
+          {
+            value: Number(node1.data * 100).toFixed(0),
+          },
+        ];
+        node2.value = [
+          {
+            value: Number(node2.data * 100).toFixed(0),
+          },
+        ];
+        node3.value = [
+          {
+            value: Number(node3.data * 100).toFixed(0),
+          },
+        ];
+        node1.color = setEffColor(node1.data, 80, 65, rateColor);
+        node2.color = setEffColor(node2.data, 75, 60, rateColor);
+        node3.color = setEffColor(node3.data, 85, 70, rateColor);
+        // 更新custom序列和时间
+        getCustomTime();
+        updateCustomEcharts("custom" + i, i, entityName);
+        updateGaugeEcharts("jiadong" + i + "_0", node1.value, node1.color);
+        updateGaugeEcharts("jiadong" + i + "_1", node2.value, node2.color);
+        updateGaugeEcharts("jiadong" + i + "_2", node3.value, node3.color);
+
+        cells.eq(7).text(devStatus.alarmCounts);
+        cells.eq(8).text(CaculateAlarmTime(devStatus.alarmCounts));
+        // }
+        self.onResize();
+      };
+
+      function setGaugeEchart(id) {
+        var color = "#ddd";
+        var data = [
+          {
+            value: 0,
+          },
+        ];
+        var fontColor = self.ctx.widgetConfig.color;
+        var option = {
+          color: color,
+          series: [
+            {
+              type: "gauge",
+              detail: {
+                formatter: "{value}%",
+                fontSize: changeRem(0.8),
+                offsetCenter: ["0%", "0%"],
+                color: color,
+              },
+              progress: {
+                show: true,
+                width: changeRem(0.33),
+              },
+              data: data,
+              startAngle: 90,
+              endAngle: -270,
+              axisLine: {
+                show: true,
+                lineStyle: {
+                  width: changeRem(0.33),
+                },
+              },
+              splitLine: {
+                show: false,
+              },
+              axisTick: {
+                show: false,
+              },
+              axisLabel: {
+                show: false,
+              },
+              pointer: {
+                show: false,
+              },
+            },
+          ],
+        };
+        var myGaugue = echarts.init(document.getElementById(id));
+        myGaugue.setOption(option);
+        my_echarts[id] = myGaugue;
+      }
+
+      function updateGaugeEcharts(id, value, color) {
+        var newOption = my_echarts[id].getOption();
+        newOption.color = color;
+        newOption.series[0].detail.color = color;
+        newOption.series[0].data = value;
+        my_echarts[id].setOption(newOption, true);
+      }
+
+      function setCustomEcharts(id, entityLabel) {
+        var fontColor = self.ctx.widgetConfig.color;
+        var startTime = self.ctx.timeWindow.minTime;
+        var nowtime = new Date().getTime();
+        var data = [
+          {
+            value: 0,
+          },
+        ];
+
+        function renderItem(params, api) {
+          debugger;
+          var categoryIndex = api.value(0);
+          var categoryIndex1 = api.value(1);
+          var categoryIndex2 = api.value(2);
+
+          var start = api.coord([api.value(1), categoryIndex]);
+          var end = api.coord([api.value(2), categoryIndex]);
+          var temp = api.size([0, 1]);
+          var height = api.size([0, 1])[1] * 0.6;
+          // height = 18;
+          return {
+            type: "rect",
+            shape: echarts.graphic.clipRectByRect(
+              {
+                x: start[0],
+                y: start[1] - height / 2,
+                width: end[0] - start[0],
+                // width: 10,
+                height: height,
+              },
+              {
+                x: params.coordSys.x,
+                y: params.coordSys.y,
+                width: params.coordSys.width,
+                height: params.coordSys.height,
+              }
+            ),
+            style: api.style(),
+          };
+        }
+        var option = {
+          tooltip: {
+            // show: false
+            confine: true,
+            backgroundColor: "rgba(0,0,0,0.51)",
+            textStyle: {
+              color: fontColor,
+            },
+            formatter: function (params) {
+              return `<div class="tooltip"><p>${entityLabel}  ${
+                params.marker
+              } ${params.name}</p><p>${new Date(params.value[1]).format(
+                "yyyy/MM/dd hh:mm:ss"
+              )}-${new Date(params.value[2]).format("hh:mm:ss")}</p></div>`;
+            },
+          },
+          grid: {
+            left: 18,
+            right: 15,
+            top: 11,
+            bottom: 8,
+          },
+          xAxis: {
+            type: "time",
+            show: false,
+            min: startTime,
+            max: nowtime,
+            splitNumber: 7,
+          },
+          yAxis: {
+            data: [entityLabel], //此处的data须为数组形式
+            axisLabel: {
+              show: false,
+            },
+            axisLine: {
+              lineStyle: {
+                color: fontColor,
+              },
+            },
+          },
+          series: [
+            {
+              type: "custom",
+              renderItem: renderItem,
+              itemStyle: {
+                normal: {
+                  opacity: 0.8,
+                },
+              },
+              encode: {
+                // x: [1, 2],
+                y: 0,
+              },
+              data: data,
+            },
+          ],
+        };
+        var myCustom = echarts.init(document.getElementById(id));
+        myCustom.setOption(option);
+        my_echrats[id] = myCustom;
+      }
+
+      function updateCustomEcharts(id, index, entityLabel) {
+        bardata = [];
+        var DAIJI_flag = [];
+        //加載x狀態序列
+        for (var i = 0; i < self.ctx.data.length; i++) {
+          var datasource = ctx.data[i].datasource,
+            label = ctx.data[i].dataKey.label,
+            data = ctx.data[i].data;
+          if (datasource.entityName == entityLabel) {
+            if (label == "status") {
+              for (let k = 0; k < data.length; k++) {
+                let ts = data[k][0];
+                let value = data[k][1];
+                if (value == 3) {
+                  DAIJI_flag[k] = 1;
+                } else if (value == 0 || value == 1) {
+                  bardata.push({
+                    name: StatusContent[value][0].substr(0, 2),
+                    value: [index, ts, ts + Interval, Interval],
+                    itemStyle: {
+                      normal: {
+                        color: StatusContent[value][1],
+                      },
+                    },
+                  });
+                } else {
+                  bardata.push({
+                    name: StatusContent[4][0].substr(0, 2),
+                    value: [index, ts, ts + Interval, Interval],
+                    itemStyle: {
+                      normal: {
+                        color: StatusContent[4][1],
+                      },
+                    },
+                  });
+                }
+              }
+            } else if (label == "heating") {
+              for (let k = 0; k < data.length; k++) {
+                let ts = data[k][0];
+                let value = data[k][1];
+                if (value == 1 && DAIJI_flag[k]) {
+                  bardata.push({
+                    name: StatusContent[3][0].substr(0, 2),
+                    value: [index, ts, ts + Interval, Interval],
+                    itemStyle: {
+                      normal: {
+                        color: StatusContent[3][1],
+                      },
+                    },
+                  });
+                } else if (value == 0 && DAIJI_flag[k]) {
+                  //停机
+                  bardata.push({
+                    name: StatusContent[2][0].substr(0, 2),
+                    value: [index, ts, ts + Interval, Interval],
+                    itemStyle: {
+                      normal: {
+                        color: StatusContent[2][1],
+                      },
+                    },
+                  });
+                }
+                DAIJI_flag[k] = 0;
+              }
+            }
+          }
+        }
+        var newOption = my_echarts[id].getOption();
+        newOption.xAxis[0].min = self.ctx.timeWindow.minTime;
+        newOption.xAxis[0].max = self.ctx.timeWindow.maxTime;
+        newOption.yAxis[0].data = [entityLabel];
+        newOption.series[0].data = bardata;
+        my_echarts[id].setOption(newOption, true);
+      }
+      // 获取状态值
+      function GetDevstatus(entityName) {
+        var content = {};
+        var length = ctx.data.length;
+        var DAIJI = false;
+        testStatus[entityName] = [];
+        for (var i = 0; i < length; i++) {
+          var datasource = ctx.data[i].datasource,
+            label = ctx.data[i].dataKey.label,
+            data = ctx.data[i].data;
+          if (datasource.entityName == entityName && label == "status") {
+            let len = data.length - 1;
+            if (data[len] && data[len][0]) {
+              //取最新数据判断
+              let id = data[len][1]; //幾臺狀態
+
+              testStatus[entityName].push(id);
+              if (id == 0) {
+                content.data = StatusContent[id][0];
+                content.color = StatusContent[id][1];
+              } else if (id == 1) {
+                content.data = StatusContent[id][0];
+                content.color = StatusContent[id][1];
+              } else if (id == 3) {
+                DAIJI = true;
+              } else {
+                content.data = StatusContent[4][0];
+                content.color = StatusContent[4][1];
+              }
+            }
+          } else if (
+            datasource.entityName == entityName &&
+            label == "heating"
+          ) {
+            let len = data.length - 1;
+            if (data[len] && data[len][0]) {
+              let value = data[len][1]; //幾臺狀態
+              testStatus[entityName].push(value);
+              if (value == 0 && DAIJI) {
+                //停机
+                var id = 2;
+                content.data = StatusContent[id][0];
+                content.color = StatusContent[id][1];
+              } else if (value == 1 && DAIJI) {
+                var id = 3;
+                content.data = StatusContent[id][0];
+                content.color = StatusContent[id][1];
+              }
+              DAIJI = false;
+            }
+          }
+        }
+
+        var alarmCounts = 0, //报警次数
+          status_0 = 0, //异常
+          status_1 = 0, //生產
+          status_2 = 0, //故障
+          status_3 = 0, //待機
+          status_4 = 0, //離綫
+          // len = 0;
+          DAIJI_flag = [];
+        for (var i = 0; i < length; i++) {
+          var datasource = ctx.data[i].datasource,
+            label = ctx.data[i].dataKey.label,
+            data = ctx.data[i].data;
+          if (datasource.entityName == entityName) {
+            if (label == "status") {
+              for (let k = 0; k < data.length; k++) {
+                if (data[k] && data[k][0]) {
+                  let id = data[k][1]; //幾臺狀態
+                  if (id == 0) {
+                    status_0++;
+                    alarmCounts++;
+                    DAIJI_flag[k] = 0;
+                  } else if (id == 1) {
+                    status_1++;
+                    DAIJI_flag[k] = 0;
+                  } else if (id == 3) {
+                    DAIJI_flag[k] = 1;
+                  } else {
+                    status_4++;
+                    DAIJI_flag[k] = 0;
+                  }
+                }
+              }
+            } else if (label == "heating") {
+              for (let k = 0; k < data.length; k++) {
+                if (data[k] && data[k][0]) {
+                  if (data[k][1] == 1 && DAIJI_flag[k]) {
+                    status_3++;
+                  } else if (data[k][1] == 0 && DAIJI_flag[k]) {
+                    //停机
+                    status_2++;
+                  }
+                }
+              }
+            }
+          }
+        }
+        content.eff = [];
+        content.alarmCounts = alarmCounts;
+        var accounts = status_0 + status_1 + status_2 + status_3 + status_4;
+        //平均稼動率
+        content.eff[0] = {
+          data: ((status_1 + status_3) / accounts).toFixed(2),
+        };
+        // 有效稼動率
+        content.eff[1] = {
+          data: (status_1 / accounts).toFixed(2),
+        };
+        var temp1 = 0,
+          temp2 = 0;
+        if (status_1 + status_3 != 0) {
+          temp1 = (status_1 / (status_1 + status_3)).toFixed(2);
+          temp2 = (status_3 / (status_1 + status_3)).toFixed(2);
+        }
+        //生產效率
+        content.eff[2] = {
+          data: temp1,
+        };
+        // 待机率
+        content.eff[3] = {
+          data: temp2,
+        };
+        // return eff;
+        return content;
+      }
+      // 统计报警时间
+      function CaculateAlarmTime(alarmcounts) {
+        let remainderTime = (alarmcounts * ctx.timeWindow.interval) / 1000;
+        let hour = Math.floor(remainderTime / 3600);
+        remainderTime -= hour * 3600;
+        let min = Math.floor(remainderTime / 60);
+        remainderTime -= min * 60;
+        let Second = remainderTime;
+        hour = hour < 10 ? "0" + hour : hour;
+        min = min < 10 ? "0" + min : min;
+        Second = Second < 10 ? "0" + Second : Second;
+        return hour + ":" + min + ":" + Second;
+      }
+      // 设置guage颜色
+      function setEffColor(value, n1, n2) {
+        var effColor = "",
+          value = value * 100;
+        if (value >= n1) {
+          effColor = rateColor[0]; //蓝
+        } else if (value <= n1 && value >= n2) {
+          effColor = rateColor[1]; //黄
+        } else if (value < n2) {
+          effColor = rateColor[2]; //红
+        }
+        return effColor;
+      }
+      // custom的时间获取和更新
+      function getCustomTime() {
+        var diffdate = [];
+        var stime = self.ctx.timeWindow.minTime,
+          etime = self.ctx.timeWindow.maxTime,
+          startDate = new Date(stime),
+          endDate = new Date(etime),
+          interval = Math.floor((etime - stime) / 6);
+        // 一天内按小時統計 ，大於一天按照天數:小時統計
+        if (etime - stime < 24 * 3600 * 1000) {
+          while (stime <= etime) {
+            //小于7h，加上分钟
+            var date = new Date(stime);
+            diffdate.push(
+              addZero(date.getHours()) + ":" + addZero(date.getMinutes())
+            );
+            stime = stime + interval;
+          }
+        }
+        // else if(etime - stime < 24 * 3600 * 1000){
+        //     while (stime <= etime) {
+        //         var date = new Date(stime);
+        //         diffdate.push(addZero(date.getHours()) + ":00");
+        //         stime = stime + interval;
+        //     }
+        // }
+        else {
+          while (stime <= etime) {
+            //大于一天，加上月日
+            var date = new Date(stime);
+            diffdate.push(
+              `${addZero(date.getMonth() + 1)}/${addZero(date.getDate())}\n
+                ${addZero(date.getHours())}:00`
+            );
+            stime = stime + interval;
+          }
+        }
+        for (let i = 0; i < diffdate.length; i++) {
+          $(".sub_title .timer_item:eq(" + i + ")").text(diffdate[i]);
+        }
+      }
+
+      self.onResize = function () {
+        if (self.ctx.height >= 70) {
+          for (let keyid in my_echarts) {
+            my_echarts[keyid].resize();
+          }
+        }
+      };
+
+      self.onDestroy = function () {};
+
+      function changeRem(res) {
+        let docEl = document.documentElement,
+          clientWidth =
+            window.innerWidth ||
+            document.documentElement.clientWidth ||
+            document.body.clientWidth;
+        if (!clientWidth) return;
+        let fontSize = clientWidth / 100;
+        return res * fontSize;
+      }
+      function addZero(num) {
+        num = num < 10 ? "0" + num : num;
+        return num;
+      }
+      Date.prototype.format = function (fmt) {
+        var o = {
+          "M+": this.getMonth() + 1, //月份
+          "d+": this.getDate(), //日
+          "h+": this.getHours(), //小时
+          "m+": this.getMinutes(), //分
+          "s+": this.getSeconds(), //秒
+          "q+": Math.floor((this.getMonth() + 3) / 3), //季度
+          S: this.getMilliseconds(), //毫秒
+        };
+
+        if (/(y+)/.test(fmt)) {
+          fmt = fmt.replace(
+            RegExp.$1,
+            (this.getFullYear() + "").substr(4 - RegExp.$1.length)
+          );
+        }
+        for (var k in o) {
+          if (new RegExp("(" + k + ")").test(fmt)) {
+            fmt = fmt.replace(
+              RegExp.$1,
+              RegExp.$1.length == 1
+                ? o[k]
+                : ("00" + o[k]).substr(("" + o[k]).length)
+            );
+          }
+        }
+        return fmt;
+      };
+    </script>
+  </body>
+</html>
